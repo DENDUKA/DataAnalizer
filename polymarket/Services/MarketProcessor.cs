@@ -186,8 +186,49 @@ public class MarketProcessor
         Console.WriteLine($"  - Errors encountered: {errorCount}");
         Console.WriteLine($"  - Total price records collected: {allPriceRecords.Count}");
 
-        // TODO: Implement in subtask-6-4
-        // 5. Export all records to CSV using CsvHelper
+        // Step 5: Export all records to CSV using CsvHelper
+        Console.WriteLine("\n--- Step 3: CSV Export ---");
+
+        if (allPriceRecords.Count == 0)
+        {
+            Console.WriteLine("No price records to export. Skipping CSV export.");
+        }
+        else
+        {
+            // Sort records by timestamp for consistent output
+            var sortedRecords = allPriceRecords
+                .OrderBy(r => r.MarketName)
+                .ThenBy(r => r.Timestamp)
+                .ToList();
+
+            // Ensure output directory exists
+            if (!Directory.Exists(_outputDirectory))
+            {
+                Directory.CreateDirectory(_outputDirectory);
+                Console.WriteLine($"Created output directory: {_outputDirectory}");
+            }
+
+            // Generate filename from pattern (replace {timestamp} with current UTC timestamp)
+            var timestamp = DateTime.UtcNow.ToString("yyyyMMdd_HHmmss", CultureInfo.InvariantCulture);
+            var fileName = _exportFilePattern.Replace("{timestamp}", timestamp);
+            var outputFile = Path.Combine(_outputDirectory, fileName);
+
+            // Configure CsvHelper
+            var csvConfig = new CsvConfiguration(CultureInfo.InvariantCulture)
+            {
+                HasHeaderRecord = true
+            };
+
+            // Write records to CSV
+            await using var writer = new StreamWriter(outputFile);
+            await using var csv = new CsvWriter(writer, csvConfig);
+
+            await csv.WriteRecordsAsync(sortedRecords);
+
+            var fileInfo = new FileInfo(outputFile);
+            Console.WriteLine($"Exported {sortedRecords.Count} records to: {outputFile}");
+            Console.WriteLine($"File size: {fileInfo.Length / 1024.0:F2} KB ({fileInfo.Length / 1024.0 / 1024.0:F2} MB)");
+        }
 
         Console.WriteLine("\n--- Processing Complete ---");
         Console.WriteLine($"Total markets discovered: {allMarkets.Count}");
