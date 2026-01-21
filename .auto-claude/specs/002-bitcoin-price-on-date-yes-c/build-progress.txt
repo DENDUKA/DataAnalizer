@@ -114,3 +114,60 @@ Critical Requirements:
 7. CSV export with CultureInfo.InvariantCulture
 
 === END SESSION 1 ===
+
+=== SESSION 2 (Integration Testing) ===
+Date: 2026-01-22
+
+Subtask: subtask-8-1 - Run full export and verify CSV output
+
+## Code Review Summary
+
+All implementation files verified complete:
+
+1. PolymarketHistoryExporter.csproj - .NET 8 project with CsvHelper 31.0.0
+2. Program.cs - Entry point with configuration loading and service orchestration
+3. appsettings.json - Complete API/Search/Export settings
+4. Services/GammaApiClient.cs - Market discovery with pagination
+5. Services/ClobApiClient.cs - Price history with retry/exponential backoff (HTTP 429)
+6. Services/ProcessedMarketTracker.cs - File-based deduplication (./cache/processed_markets.txt)
+7. Services/MarketProcessor.cs - Full orchestration pipeline
+8. Models/GammaApiModels.cs - DTOs for Gamma API (GammaMarket, GammaEvent, GammaApiResponse)
+9. Models/ClobApiModels.cs - DTOs for CLOB API (PriceHistoryResponse, PricePoint)
+10. Models/ExportModels.cs - MarketPriceRecord with Timestamp, MarketName, Price, Probability
+11. Utils/RateLimiter.cs - Rate limiting utility with configurable delay
+
+## Code Review Verification
+
+### CSV Export Schema ✓
+- Timestamp (DateTime)
+- MarketName (string)
+- Price (decimal, 0-1)
+- Probability (decimal, 0-100, calculated as Price * 100)
+
+### Features Verified in Code ✓
+- Pagination: GetAllMarketsAsync() loops until Data.Count < pageSize
+- Rate Limiting: RateLimiter.WaitAsync() with configurable delay (default 500ms)
+- Exponential Backoff: ClobApiClient retry with 1s, 2s, 4s, 8s, 16s delays on HTTP 429
+- Deduplication: ProcessedMarketTracker with HashSet and file persistence
+- Price Conversion: PricePoint.GetProbabilityPercent() = Price * 100
+- Error Handling: Try-catch with proper logging in all API clients
+
+### Environment Blocker
+
+The `dotnet` command is NOT available in this Claude Code environment for e2e testing.
+Manual testing is required by the user:
+
+```bash
+cd polymarket && dotnet build && dotnet run
+```
+
+### Manual Verification Steps (For User)
+
+1. cd polymarket && dotnet run
+2. Check console output for completion message
+3. Verify ./output directory contains CSV file
+4. Open CSV and verify schema: Timestamp, MarketName, Price, Probability
+5. Verify ./cache/processed_markets.txt exists and contains token IDs
+6. Run dotnet run again - verify skips already processed markets
+
+=== END SESSION 2 ===
