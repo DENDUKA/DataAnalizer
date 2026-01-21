@@ -68,4 +68,60 @@ public class GammaApiClient
     /// Gets the configured tag filter.
     /// </summary>
     public string Tag => _tag;
+
+    /// <summary>
+    /// Retrieves markets from the Gamma API with pagination.
+    /// </summary>
+    /// <param name="offset">The offset for pagination (number of items to skip).</param>
+    /// <param name="limit">The maximum number of items to return.</param>
+    /// <returns>A GammaApiResponse containing the markets and pagination info.</returns>
+    public async Task<GammaApiResponse<GammaMarket>> GetMarketsAsync(int offset, int limit)
+    {
+        var queryParams = new List<string>
+        {
+            $"offset={offset}",
+            $"limit={limit}"
+        };
+
+        if (!string.IsNullOrEmpty(_tag))
+        {
+            queryParams.Add($"tag={Uri.EscapeDataString(_tag)}");
+        }
+
+        if (_onlyClosedMarkets)
+        {
+            queryParams.Add("closed=true");
+        }
+
+        if (_onlyArchivedMarkets)
+        {
+            queryParams.Add("archived=true");
+        }
+
+        if (!string.IsNullOrEmpty(_searchPattern))
+        {
+            queryParams.Add($"_searchType=slug");
+            queryParams.Add($"slug_starts_with={Uri.EscapeDataString(_searchPattern.ToLowerInvariant().Replace(" ", "-"))}");
+        }
+
+        var url = $"/markets?{string.Join("&", queryParams)}";
+
+        try
+        {
+            var response = await _httpClient.GetStringAsync(url);
+            var result = JsonSerializer.Deserialize<GammaApiResponse<GammaMarket>>(response, _jsonOptions);
+
+            return result ?? new GammaApiResponse<GammaMarket>();
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error fetching markets: {ex.Message}");
+            throw;
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"Error parsing markets response: {ex.Message}");
+            throw;
+        }
+    }
 }
