@@ -3,13 +3,13 @@
   "spec": "002-bitcoin-price-on-date-yes-c",
   "state": "building",
   "subtasks": {
-    "completed": 8,
+    "completed": 11,
     "total": 22,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Gamma API Client Implementation",
+    "current": "CLOB API Client Implementation",
     "id": null,
     "total": 3
   },
@@ -18,8 +18,8 @@
     "max": 1
   },
   "session": {
-    "number": 5,
+    "number": 8,
     "started_at": "2026-01-21T21:12:29.956660"
   },
-  "last_update": "2026-01-21T21:21:35.680219"
+  "last_update": "2026-01-21T21:28:55.527515"
 }

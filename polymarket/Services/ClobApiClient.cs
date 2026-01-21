@@ -12,6 +12,9 @@ public class ClobApiClient
     private readonly HttpClient _httpClient;
     private readonly JsonSerializerOptions _jsonOptions;
 
+    private const int MaxRetries = 5;
+    private const int InitialDelayMs = 1000;
+
     /// <summary>
     /// Initializes a new instance of the ClobApiClient.
     /// </summary>
@@ -47,29 +50,47 @@ public class ClobApiClient
         }
 
         var url = $"/prices-history?market={Uri.EscapeDataString(tokenId)}&interval=max&fidelity=60";
+        var retryCount = 0;
+        var delayMs = InitialDelayMs;
 
-        try
+        while (true)
         {
-            var response = await _httpClient.GetStringAsync(url);
-            var result = JsonSerializer.Deserialize<PriceHistoryResponse>(response, _jsonOptions);
+            try
+            {
+                var response = await _httpClient.GetStringAsync(url);
+                var result = JsonSerializer.Deserialize<PriceHistoryResponse>(response, _jsonOptions);
 
-            return result?.History ?? new List<PricePoint>();
-        }
-        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
-        {
-            // Token not found - return empty list (not an error, just no data)
-            Console.WriteLine($"Token not found: {tokenId}");
-            return new List<PricePoint>();
-        }
-        catch (HttpRequestException ex)
-        {
-            Console.WriteLine($"Error fetching price history for token {tokenId}: {ex.Message}");
-            throw;
-        }
-        catch (JsonException ex)
-        {
-            Console.WriteLine($"Error parsing price history response for token {tokenId}: {ex.Message}");
-            throw;
+                return result?.History ?? new List<PricePoint>();
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Token not found - return empty list (not an error, just no data)
+                Console.WriteLine($"Token not found: {tokenId}");
+                return new List<PricePoint>();
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                retryCount++;
+                if (retryCount > MaxRetries)
+                {
+                    Console.WriteLine($"Max retries exceeded for token {tokenId} after {MaxRetries} attempts");
+                    throw;
+                }
+
+                Console.WriteLine($"Rate limited (HTTP 429). Retry {retryCount}/{MaxRetries} after {delayMs}ms...");
+                await Task.Delay(delayMs);
+                delayMs *= 2; // Exponential backoff
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"Error fetching price history for token {tokenId}: {ex.Message}");
+                throw;
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"Error parsing price history response for token {tokenId}: {ex.Message}");
+                throw;
+            }
         }
     }
 }
