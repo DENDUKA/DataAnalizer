@@ -124,4 +124,49 @@ public class GammaApiClient
             throw;
         }
     }
+
+    /// <summary>
+    /// Retrieves all markets from the Gamma API by iterating through all pages.
+    /// Uses configured page size and filters.
+    /// </summary>
+    /// <returns>A list of all matching GammaMarket objects.</returns>
+    public async Task<List<GammaMarket>> GetAllMarketsAsync()
+    {
+        var allMarkets = new List<GammaMarket>();
+        var currentOffset = 0;
+
+        while (true)
+        {
+            try
+            {
+                var response = await GetMarketsAsync(currentOffset, _pageSize);
+
+                if (response.Data == null || response.Data.Count == 0)
+                    break;
+
+                allMarkets.AddRange(response.Data);
+
+                Console.Write($"\rMarkets loaded: {allMarkets.Count}");
+
+                // Check if there are more pages
+                if (response.NextOffset == null || response.Data.Count < _pageSize)
+                    break;
+
+                currentOffset = response.NextOffset.Value;
+
+                // Rate limiting delay
+                await Task.Delay(100);
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"\nRequest error: {ex.Message}");
+                Console.WriteLine("Retrying in 5 seconds...");
+                await Task.Delay(5000);
+            }
+        }
+
+        Console.WriteLine($"\nTotal markets loaded: {allMarkets.Count}");
+
+        return allMarkets;
+    }
 }

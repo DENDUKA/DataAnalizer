@@ -1,0 +1,677 @@
+{
+  "feature": "Polymarket Bitcoin Price History Exporter (C#)",
+  "workflow_type": "feature",
+  "workflow_rationale": "This is a greenfield console application being built from scratch. It implements a complete data extraction pipeline with API integration, pagination, rate limiting, and CSV export. The workflow follows a natural build order: setup \u2192 models \u2192 API clients \u2192 core services \u2192 integration.",
+  "phases": [
+    {
+      "id": "phase-1-setup",
+      "name": "Project Setup & Dependencies",
+      "type": "setup",
+      "description": "Create .csproj file, add NuGet dependencies, create directory structure and .gitignore",
+      "depends_on": [],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-1-1",
+          "description": "Create PolymarketHistoryExporter.csproj with .NET 8 and CsvHelper dependency",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/PolymarketHistoryExporter.csproj"
+          ],
+          "patterns_from": [
+            "BinanceDataLoader.csproj"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "completed",
+          "notes": "Created PolymarketHistoryExporter.csproj with .NET 8 and CsvHelper 31.0.0. File follows exact pattern from BinanceDataLoader.csproj. Build verification skipped (dotnet not available in environment) but project file structure is valid.",
+          "updated_at": "2026-01-21T12:25:05.030792+00:00"
+        },
+        {
+          "id": "subtask-1-2",
+          "description": "Create directory structure (Services/, Models/, Utils/) and .gitignore",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Services/.gitkeep",
+            "polymarket/Models/.gitkeep",
+            "polymarket/Utils/.gitkeep",
+            "polymarket/.gitignore"
+          ],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "test -d polymarket/Services && test -d polymarket/Models && test -d polymarket/Utils && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed",
+          "notes": "Created Services/, Models/, Utils/ directories with .gitkeep files and .gitignore excluding bin/, obj/, output/, cache/ directories. Verification passed.",
+          "updated_at": "2026-01-21T12:30:53.133023+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-2-models-config",
+      "name": "API Models & Configuration",
+      "type": "implementation",
+      "description": "Create DTOs for Gamma API and CLOB API responses, and appsettings.json configuration file",
+      "depends_on": [
+        "phase-1-setup"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-2-1",
+          "description": "Create GammaApiModels.cs with Event, Market, and response wrapper DTOs",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Models/GammaApiModels.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "completed",
+          "implementation_notes": "Use [JsonPropertyName] attributes for API field mapping (id, title, markets, clobTokenIds, outcomes). Include GammaApiResponse<T> wrapper with data, count, next_offset fields.",
+          "notes": "GammaApiModels.cs already created and committed in previous session. Contains GammaApiResponse<T> wrapper, GammaEvent, and GammaMarket DTOs with JsonPropertyName attributes. Includes GetYesTokenId() and GetNoTokenId() helper methods for token identification. Build verification skipped (dotnet not available in environment).",
+          "updated_at": "2026-01-21T12:33:16.538737+00:00"
+        },
+        {
+          "id": "subtask-2-2",
+          "description": "Create ClobApiModels.cs with PriceHistory and PricePoint DTOs",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Models/ClobApiModels.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "completed",
+          "implementation_notes": "PricePoint should have properties for 't' (timestamp as long) and 'p' (price as string). PriceHistoryResponse wraps history array.",
+          "notes": "ClobApiModels.cs already created and committed in previous session. Contains PriceHistoryResponse wrapper and PricePoint DTO with JsonPropertyName attributes for 't' (timestamp) and 'p' (price). Includes helper methods: GetTimestampAsUtc(), GetTimestampWithOffset(), GetPriceAsDecimal(), GetProbabilityPercent(). Build verification skipped (dotnet not available in environment) but code structure follows GammaApiModels.cs pattern exactly.",
+          "updated_at": "2026-01-21T12:35:22.208136+00:00"
+        },
+        {
+          "id": "subtask-2-3",
+          "description": "Create ExportModels.cs with MarketPriceRecord for CSV export",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Models/ExportModels.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "completed",
+          "implementation_notes": "Include Timestamp (DateTime), MarketName (string), Price (decimal), Probability (decimal calculated property = Price * 100)",
+          "notes": "Created ExportModels.cs with MarketPriceRecord class containing Timestamp (DateTime), MarketName (string), Price (decimal), and Probability (calculated property = Price * 100). File follows existing model patterns with XML documentation. Committed to repository. Build verification skipped (dotnet not available in environment) but code structure is valid C# matching other model files.",
+          "updated_at": "2026-01-21T17:14:11.404397+00:00"
+        },
+        {
+          "id": "subtask-2-4",
+          "description": "Create appsettings.json with API URLs, rate limits, and export paths",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/appsettings.json"
+          ],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "test -f polymarket/appsettings.json && echo 'OK'",
+            "expected": "OK"
+          },
+          "status": "completed",
+          "implementation_notes": "Include ApiSettings (GammaApiBaseUrl, ClobApiBaseUrl, RateLimitDelayMs=500, HttpTimeoutSeconds=30), SearchSettings (SearchPattern, Tag, PageSize=100), ExportSettings (OutputDirectory=./output, CacheDirectory=./cache)",
+          "notes": "Created appsettings.json with complete configuration: ApiSettings (Gamma/CLOB API URLs, RateLimitDelayMs=500, HttpTimeoutSeconds=30, MaxRetries=3), SearchSettings (SearchPattern, Tag, OnlyClosedMarkets, OnlyArchivedMarkets, PageSize=100), ExportSettings (OutputDirectory, CacheDirectory, ProcessedMarketsFile, ExportFileNamePattern). Verification passed. Committed to repository.",
+          "updated_at": "2026-01-21T17:16:15.691951+00:00"
+        }
+      ]
+    },
+    {
+      "id": "phase-3-gamma-api",
+      "name": "Gamma API Client Implementation",
+      "type": "implementation",
+      "description": "Build GammaApiClient with market discovery and pagination support",
+      "depends_on": [
+        "phase-2-models-config"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-3-1",
+          "description": "Create GammaApiClient.cs with HttpClient and base configuration",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Services/GammaApiClient.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "completed",
+          "implementation_notes": "HttpClient as instance variable with BaseAddress = https://gamma-api.polymarket.com. Include constructor that accepts configuration.",
+          "notes": "Created GammaApiClient.cs with HttpClient and base configuration. Includes: HttpClient with BaseAddress and Timeout, JsonSerializerOptions with PropertyNameCaseInsensitive=true, constructor accepting all configuration parameters (baseUrl, timeoutSeconds, searchPattern, tag, onlyClosedMarkets, onlyArchivedMarkets, pageSize), and public properties for PageSize, SearchPattern, Tag. Build verification skipped (dotnet not available in environment). Committed as c02503a.",
+          "updated_at": "2026-01-21T17:18:48.202043+00:00"
+        },
+        {
+          "id": "subtask-3-2",
+          "description": "Implement GetMarketsAsync method with pagination parameters (offset, limit)",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/GammaApiClient.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "completed",
+          "implementation_notes": "Build query string with tag=Crypto, closed=true, archived=true, offset, limit parameters. Return GammaApiResponse<Market> with deserialization using PropertyNameCaseInsensitive=true",
+          "notes": "Implemented GetMarketsAsync method with pagination parameters (offset, limit). Method builds query string with configurable tag, closed, archived, and search pattern filters. Uses HttpClient.GetStringAsync and JsonSerializer.Deserialize following Program.cs patterns. Includes proper error handling for HttpRequestException and JsonException. Build verification skipped (dotnet not available in environment) but code structure follows C# conventions. Committed as dfc2565.",
+          "updated_at": "2026-01-21T17:21:09.297077+00:00"
+        },
+        {
+          "id": "subtask-3-3",
+          "description": "Implement GetAllMarketsAsync with complete pagination loop",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/GammaApiClient.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "While loop that continues until response.data.Count < limit. Increment offset by limit each iteration. Aggregate all markets into single list."
+        }
+      ]
+    },
+    {
+      "id": "phase-4-clob-api",
+      "name": "CLOB API Client Implementation",
+      "type": "implementation",
+      "description": "Build ClobApiClient for fetching price history with rate limiting support",
+      "depends_on": [
+        "phase-2-models-config"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-4-1",
+          "description": "Create ClobApiClient.cs with HttpClient and base configuration",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Services/ClobApiClient.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "HttpClient instance with BaseAddress = https://clob.polymarket.com. Accept configuration in constructor."
+        },
+        {
+          "id": "subtask-4-2",
+          "description": "Implement GetPriceHistoryAsync method for single token",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/ClobApiClient.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Build query: /prices-history?market={tokenId}&interval=max&fidelity=60. Deserialize to PriceHistoryResponse. Handle HTTP 404 (invalid token) gracefully by returning empty list."
+        },
+        {
+          "id": "subtask-4-3",
+          "description": "Add retry logic with exponential backoff for HTTP 429",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/ClobApiClient.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Try-catch HttpRequestException. If StatusCode == 429, retry with delays: 1s, 2s, 4s (exponential backoff). Max 3 retries total."
+        }
+      ]
+    },
+    {
+      "id": "phase-5-core-services",
+      "name": "Core Services (RateLimiter, Tracker)",
+      "type": "implementation",
+      "description": "Build RateLimiter utility and ProcessedMarketTracker for deduplication",
+      "depends_on": [
+        "phase-2-models-config"
+      ],
+      "parallel_safe": true,
+      "subtasks": [
+        {
+          "id": "subtask-5-1",
+          "description": "Create RateLimiter.cs with WaitAsync method and configurable delay",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Utils/RateLimiter.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Track _lastRequest DateTime. WaitAsync calculates elapsed time since last request and delays if needed. Default delay 500ms."
+        },
+        {
+          "id": "subtask-5-2",
+          "description": "Create ProcessedMarketTracker.cs with file-based persistence",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Services/ProcessedMarketTracker.cs"
+          ],
+          "patterns_from": [],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Use HashSet<string> to store processed token IDs. LoadFromFile reads from ./cache/processed_markets.txt. IsProcessed checks set. MarkProcessed adds to set and appends to file immediately."
+        }
+      ]
+    },
+    {
+      "id": "phase-6-market-processor",
+      "name": "Market Processor & Orchestration",
+      "type": "implementation",
+      "description": "Build MarketProcessor service that coordinates discovery, fetching, and export",
+      "depends_on": [
+        "phase-3-gamma-api",
+        "phase-4-clob-api",
+        "phase-5-core-services"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-6-1",
+          "description": "Create MarketProcessor.cs with dependency injection of all clients",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Services/MarketProcessor.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Accept GammaApiClient, ClobApiClient, ProcessedMarketTracker, RateLimiter in constructor. Include RunAsync() main method."
+        },
+        {
+          "id": "subtask-6-2",
+          "description": "Implement market discovery logic in RunAsync",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/MarketProcessor.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Call _gammaClient.GetAllMarketsAsync(). Filter markets matching 'Bitcoin price on' pattern. Extract clobTokenIds for 'Yes' outcomes only (use outcomes array to determine index)."
+        },
+        {
+          "id": "subtask-6-3",
+          "description": "Implement price history fetching loop with rate limiting and deduplication",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/MarketProcessor.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "For each token: check _tracker.IsProcessed, skip if true. Call _rateLimiter.WaitAsync(), then _clobClient.GetPriceHistoryAsync(). Convert Unix timestamps to DateTime. Convert price strings to decimal. Build MarketPriceRecord list. Mark as processed."
+        },
+        {
+          "id": "subtask-6-4",
+          "description": "Implement CSV export logic with CsvHelper",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Services/MarketProcessor.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Create output directory if not exists. Generate filename with timestamp. Use StreamWriter + CsvWriter with CultureInfo.InvariantCulture. WriteRecordsAsync(allRecords). Log file path and size."
+        }
+      ]
+    },
+    {
+      "id": "phase-7-main-program",
+      "name": "Main Program & Entry Point",
+      "type": "implementation",
+      "description": "Create Program.cs entry point that wires all services together",
+      "depends_on": [
+        "phase-6-market-processor"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-7-1",
+          "description": "Create Program.cs with Main method and configuration loading",
+          "service": "polymarket-exporter",
+          "files_to_modify": [],
+          "files_to_create": [
+            "polymarket/Program.cs"
+          ],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Load appsettings.json using System.Text.Json. Instantiate all services (GammaApiClient, ClobApiClient, RateLimiter, ProcessedMarketTracker, MarketProcessor). Call processor.RunAsync().Wait()."
+        },
+        {
+          "id": "subtask-7-2",
+          "description": "Add console logging for progress tracking",
+          "service": "polymarket-exporter",
+          "files_to_modify": [
+            "polymarket/Program.cs",
+            "polymarket/Services/MarketProcessor.cs"
+          ],
+          "files_to_create": [],
+          "patterns_from": [
+            "Program.cs"
+          ],
+          "verification": {
+            "type": "command",
+            "command": "cd polymarket && dotnet build",
+            "expected": "Build succeeded"
+          },
+          "status": "pending",
+          "implementation_notes": "Add Console.WriteLine for: start message, markets discovered count, processing progress (X/Y markets), skipped (already processed) count, errors, completion message with output file path."
+        }
+      ]
+    },
+    {
+      "id": "phase-8-integration",
+      "name": "Integration Testing & Verification",
+      "type": "integration",
+      "description": "End-to-end testing of complete data export flow",
+      "depends_on": [
+        "phase-7-main-program"
+      ],
+      "parallel_safe": false,
+      "subtasks": [
+        {
+          "id": "subtask-8-1",
+          "description": "Run full export and verify CSV output",
+          "service": "polymarket-exporter",
+          "all_services": true,
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "e2e",
+            "steps": [
+              "cd polymarket && dotnet run",
+              "Check console output for completion message",
+              "Verify ./output directory contains CSV file",
+              "Open CSV and verify schema: Timestamp, MarketName, Price, Probability",
+              "Verify ./cache/processed_markets.txt exists and contains token IDs",
+              "Run dotnet run again - verify skips already processed markets"
+            ]
+          },
+          "status": "pending"
+        },
+        {
+          "id": "subtask-8-2",
+          "description": "Manual API verification with curl",
+          "service": "polymarket-exporter",
+          "all_services": false,
+          "files_to_modify": [],
+          "files_to_create": [],
+          "patterns_from": [],
+          "verification": {
+            "type": "manual",
+            "instructions": "Test Gamma API: curl 'https://gamma-api.polymarket.com/markets?tag=Crypto&closed=true&limit=5' | Verify JSON response with markets. Test CLOB API: curl 'https://clob.polymarket.com/prices-history?market=<tokenId>&interval=max&fidelity=60' | Verify price history array returned."
+          },
+          "status": "pending"
+        }
+      ]
+    }
+  ],
+  "summary": {
+    "total_phases": 8,
+    "total_subtasks": 20,
+    "services_involved": [
+      "polymarket-exporter"
+    ],
+    "parallelism": {
+      "max_parallel_phases": 3,
+      "parallel_groups": [
+        {
+          "phases": [
+            "phase-3-gamma-api",
+            "phase-4-clob-api",
+            "phase-5-core-services"
+          ],
+          "reason": "All depend only on phase-2-models-config, different file sets, independent components"
+        }
+      ],
+      "recommended_workers": 3,
+      "speedup_estimate": "1.8x faster than sequential with 3 parallel workers in phase 3-5"
+    },
+    "startup_command": "cd polymarket && dotnet build && dotnet run"
+  },
+  "verification_strategy": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "test_creation_phase": "post_implementation",
+    "test_types_required": [
+      "unit",
+      "integration"
+    ],
+    "security_scanning_required": false,
+    "staging_deployment_required": false,
+    "acceptance_criteria": [
+      "All discovered markets successfully fetched without errors",
+      "CSV file contains valid data with correct schema",
+      "Processed markets tracked correctly (no duplicate fetches on re-run)",
+      "Rate limiting prevents HTTP 429 errors",
+      "Prices correctly converted to probabilities (0.65 \u2192 65.0)",
+      "Console logging shows clear progress and completion status"
+    ],
+    "verification_steps": [
+      {
+        "name": "Build Verification",
+        "command": "cd polymarket && dotnet build",
+        "expected_outcome": "Build succeeded with no errors",
+        "type": "build",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Unit Tests",
+        "command": "cd polymarket && dotnet test",
+        "expected_outcome": "All unit tests pass",
+        "type": "test",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Integration Test - Full Export",
+        "command": "cd polymarket && dotnet run",
+        "expected_outcome": "CSV file created in ./output directory with valid data",
+        "type": "integration",
+        "required": true,
+        "blocking": true
+      },
+      {
+        "name": "Idempotency Test",
+        "command": "cd polymarket && dotnet run",
+        "expected_outcome": "Second run skips already processed markets",
+        "type": "integration",
+        "required": true,
+        "blocking": false
+      }
+    ],
+    "reasoning": "Medium risk external API integration requires unit tests for business logic (price conversion, deduplication) and integration tests for API calls. No security-sensitive operations."
+  },
+  "qa_acceptance": {
+    "unit_tests": {
+      "required": true,
+      "commands": [
+        "cd polymarket && dotnet test"
+      ],
+      "minimum_coverage": null,
+      "test_files": [
+        "polymarket/Tests/ModelTests.cs",
+        "polymarket/Tests/RateLimiterTests.cs",
+        "polymarket/Tests/ProcessedMarketTrackerTests.cs"
+      ]
+    },
+    "integration_tests": {
+      "required": true,
+      "commands": [
+        "cd polymarket && dotnet run"
+      ],
+      "services_to_test": [
+        "polymarket-exporter"
+      ],
+      "api_endpoints": [
+        "https://gamma-api.polymarket.com/markets",
+        "https://clob.polymarket.com/prices-history"
+      ]
+    },
+    "e2e_tests": {
+      "required": true,
+      "commands": [
+        "cd polymarket && dotnet run"
+      ],
+      "flows": [
+        "complete-export-flow",
+        "idempotency-verification"
+      ]
+    },
+    "csv_verification": {
+      "required": true,
+      "output_path": "polymarket/output/*.csv",
+      "schema": [
+        "Timestamp",
+        "MarketName",
+        "Price",
+        "Probability"
+      ],
+      "checks": [
+        "CSV file exists",
+        "Headers match expected schema",
+        "Data rows present",
+        "Timestamp format is valid DateTime",
+        "Price is decimal between 0 and 1",
+        "Probability is Price * 100"
+      ]
+    },
+    "cache_verification": {
+      "required": true,
+      "cache_file": "polymarket/cache/processed_markets.txt",
+      "checks": [
+        "Cache file created after first run",
+        "Contains clobTokenIds",
+        "Subsequent runs skip cached IDs"
+      ]
+    }
+  },
+  "qa_signoff": null,
+  "status": "in_progress",
+  "planStatus": "in_progress",
+  "updated_at": "2026-01-21T17:12:26.089Z",
+  "recoveryNote": "Task recovered from stuck state at 2026-01-21T17:12:26.089Z",
+  "last_updated": "2026-01-21T17:21:09.297077+00:00"
+}

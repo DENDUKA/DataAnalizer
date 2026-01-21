@@ -1,0 +1,10 @@
+{
+  "discovered_files": {
+    "polymarket/Services/GammaApiClient.cs": {
+      "description": "GetMarketsAsync method implemented with pagination (offset/limit). Uses query string builder pattern with conditional parameters. Search pattern is converted to slug format (lowercase, spaces to dashes) for slug_starts_with API parameter.",
+      "category": "api-client-pattern",
+      "discovered_at": "2026-01-21T17:21:16.343004+00:00"
+    }
+  },
+  "last_updated": "2026-01-21T17:21:16.343004+00:00"
+}

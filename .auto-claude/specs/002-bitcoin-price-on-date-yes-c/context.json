@@ -1,0 +1,66 @@
+{
+  "files_to_modify": {},
+  "files_to_create": {
+    "polymarket-exporter": [
+      "polymarket/PolymarketHistoryExporter.csproj",
+      "polymarket/Program.cs",
+      "polymarket/appsettings.json",
+      "polymarket/.gitignore",
+      "polymarket/Services/GammaApiClient.cs",
+      "polymarket/Services/ClobApiClient.cs",
+      "polymarket/Services/MarketProcessor.cs",
+      "polymarket/Services/ProcessedMarketTracker.cs",
+      "polymarket/Models/GammaApiModels.cs",
+      "polymarket/Models/ClobApiModels.cs",
+      "polymarket/Models/ExportModels.cs",
+      "polymarket/Utils/RateLimiter.cs"
+    ]
+  },
+  "files_to_reference": [
+    "Program.cs",
+    "BinanceDataLoader.csproj"
+  ],
+  "patterns": {
+    "http_client_pattern": "HttpClient created as instance variable: var httpClient = new HttpClient() { BaseAddress = ... }",
+    "pagination_pattern": "While loop: while (currentStart < endTime) with offset increment and break on empty response",
+    "rate_limit_pattern": "await Task.Delay(100) between requests, await Task.Delay(5000) on error retry",
+    "csv_export_pattern": "CsvHelper with CsvConfiguration(CultureInfo.InvariantCulture) and await csv.WriteRecordsAsync()",
+    "json_deserialization_pattern": "JsonSerializer.Deserialize<T> with PropertyNameCaseInsensitive option",
+    "error_handling_pattern": "try-catch HttpRequestException with retry delay and console logging",
+    "unix_timestamp_parsing": "DateTimeOffset.FromUnixTimeMilliseconds(timestamp).UtcDateTime"
+  },
+  "existing_implementations": {
+    "description": "Found existing Binance API integration with pagination, rate limiting, CSV export",
+    "relevant_files": [
+      "Program.cs - demonstrates HttpClient, pagination, rate limiting, retry logic, CSV export",
+      "BinanceDataLoader.csproj - demonstrates .NET 8 project structure with CsvHelper dependency"
+    ]
+  },
+  "api_details": {
+    "gamma_api": {
+      "base_url": "https://gamma-api.polymarket.com",
+      "endpoints": [
+        "/events",
+        "/markets"
+      ],
+      "pagination": "offset-based with limit parameter",
+      "filters": [
+        "tag=Crypto",
+        "search=Bitcoin price on",
+        "closed=true",
+        "archived=true"
+      ]
+    },
+    "clob_api": {
+      "base_url": "https://clob.polymarket.com",
+      "endpoint": "/prices-history",
+      "parameters": [
+        "market=<tokenId>",
+        "interval=max",
+        "fidelity=60"
+      ],
+      "rate_limit": "Required - use Task.Delay between requests"
+    }
+  },
+  "task_description": "Build a C# console application that discovers completed Polymarket \"Bitcoin price on [Date]\" prediction markets and exports minute/hourly price history (probabilities) for \"Yes\" outcome tokens to CSV format using Gamma API for market discovery and CLOB API for price data retrieval."
+}
