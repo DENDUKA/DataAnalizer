@@ -68,10 +68,58 @@ public class MarketProcessor
         Console.WriteLine("Polymarket Bitcoin Price History Exporter");
         Console.WriteLine("=" + new string('=', 49));
 
-        // TODO: Implement in subtask-6-2
-        // 1. Discover markets using _gammaClient.GetAllMarketsAsync()
-        // 2. Filter markets matching "Bitcoin price on" pattern
-        // 3. Extract "Yes" outcome clobTokenIds
+        Console.WriteLine($"\nOutput directory: {_outputDirectory}");
+        Console.WriteLine($"Export file pattern: {_exportFilePattern}");
+        Console.WriteLine($"Rate limit delay: {_rateLimiter.DelayMs}ms");
+        Console.WriteLine($"Previously processed tokens: {_tracker.Count}");
+
+        // Step 1: Discover markets using Gamma API
+        Console.WriteLine("\n--- Step 1: Market Discovery ---");
+        Console.WriteLine($"Search pattern: {_gammaClient.SearchPattern}");
+        Console.WriteLine($"Tag filter: {_gammaClient.Tag}");
+
+        var allMarkets = await _gammaClient.GetAllMarketsAsync();
+
+        if (allMarkets.Count == 0)
+        {
+            Console.WriteLine("No markets found. Exiting.");
+            return;
+        }
+
+        // Step 2: Filter markets matching "Bitcoin price on" pattern
+        // The GammaApiClient already filters by search pattern, but we apply additional validation
+        var bitcoinPricePattern = "bitcoin price on";
+        var filteredMarkets = allMarkets
+            .Where(m => m.Question.Contains(bitcoinPricePattern, StringComparison.OrdinalIgnoreCase) ||
+                       m.Slug.Contains("bitcoin-price-on", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        Console.WriteLine($"\nMarkets matching 'Bitcoin price on' pattern: {filteredMarkets.Count}");
+
+        // Step 3: Extract "Yes" outcome clobTokenIds
+        var marketsWithYesTokens = new List<(GammaMarket Market, string YesTokenId)>();
+
+        foreach (var market in filteredMarkets)
+        {
+            var yesTokenId = market.GetYesTokenId();
+
+            if (!string.IsNullOrEmpty(yesTokenId))
+            {
+                marketsWithYesTokens.Add((market, yesTokenId));
+            }
+            else
+            {
+                Console.WriteLine($"Warning: No 'Yes' token found for market: {market.Question}");
+            }
+        }
+
+        Console.WriteLine($"Markets with valid 'Yes' tokens: {marketsWithYesTokens.Count}");
+
+        if (marketsWithYesTokens.Count == 0)
+        {
+            Console.WriteLine("No markets with valid 'Yes' tokens found. Exiting.");
+            return;
+        }
 
         // TODO: Implement in subtask-6-3
         // 4. For each token:
@@ -84,12 +132,9 @@ public class MarketProcessor
         // TODO: Implement in subtask-6-4
         // 5. Export all records to CSV using CsvHelper
 
-        Console.WriteLine("\nMarketProcessor initialized with all dependencies.");
-        Console.WriteLine($"Output directory: {_outputDirectory}");
-        Console.WriteLine($"Export file pattern: {_exportFilePattern}");
-        Console.WriteLine($"Rate limit delay: {_rateLimiter.DelayMs}ms");
-        Console.WriteLine($"Previously processed tokens: {_tracker.Count}");
-
-        await Task.CompletedTask;
+        Console.WriteLine("\n--- Market Discovery Complete ---");
+        Console.WriteLine($"Total markets discovered: {allMarkets.Count}");
+        Console.WriteLine($"Bitcoin price markets: {filteredMarkets.Count}");
+        Console.WriteLine($"Markets ready for processing: {marketsWithYesTokens.Count}");
     }
 }
