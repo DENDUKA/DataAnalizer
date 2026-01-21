@@ -171,3 +171,78 @@ cd polymarket && dotnet build && dotnet run
 6. Run dotnet run again - verify skips already processed markets
 
 === END SESSION 2 ===
+
+=== SESSION 3 (Manual API Verification) ===
+Date: 2026-01-22
+
+Subtask: subtask-8-2 - Manual API verification with curl
+
+## Gamma API Verification ✅
+
+**Test Command:**
+```bash
+curl 'https://gamma-api.polymarket.com/markets?tag=Crypto&closed=true&limit=5'
+```
+
+**Result:** SUCCESS - Returns JSON array of markets
+
+**Response Structure Verified:**
+```json
+{
+  "id": "12",
+  "question": "Will Joe Biden get Coronavirus before the election?",
+  "clobTokenIds": "[\"53135072...\", \"60869871...\"]",
+  "outcomes": "[\"Yes\", \"No\"]",
+  "closed": true,
+  "closedTime": "2020-11-02 16:31:01+00",
+  "volume": "32257.445115"
+}
+```
+
+**Key Fields Confirmed:**
+- `id` - Market identifier
+- `question` - Market question text
+- `clobTokenIds` - JSON array string with Yes/No token IDs
+- `outcomes` - JSON array string ["Yes", "No"]
+- `closed` - Boolean indicating market closed
+- `closedTime` - Timestamp when market closed
+- `volume` - Trading volume
+
+## CLOB API Verification ✅
+
+**Test Command:**
+```bash
+curl 'https://clob.polymarket.com/prices-history?market=103775144008331087083272037338660735458669647281715261849615395641040706702433&interval=max&fidelity=60'
+```
+
+**Result:** SUCCESS - Returns JSON with price history array
+
+**Response Structure Verified:**
+```json
+{
+  "history": [
+    {"t": 1768921212, "p": 0.33},
+    {"t": 1768924810, "p": 0.33},
+    ...
+  ]
+}
+```
+
+**Key Fields Confirmed:**
+- `history` - Array of price points
+- `t` - Unix timestamp (seconds since epoch)
+- `p` - Price as decimal (0.33 = 33% probability)
+
+**Price History Points:** 33 data points returned for test market
+
+## API Notes
+
+1. **Gamma API:** The `tag=Crypto` filter doesn't strictly filter results - it returns all closed markets ordered by ID. Client-side filtering by question pattern ("Bitcoin price on") is required.
+
+2. **CLOB API:** Old markets (2020 era) return empty `history: []` - price history data appears to only be retained for more recent markets.
+
+3. **Token ID Format:** Token IDs are very large integers (not hex addresses) - e.g., `103775144008331087083272037338660735458669647281715261849615395641040706702433`
+
+4. **Rate Limiting:** No rate limit errors encountered during manual testing with curl.
+
+=== END SESSION 3 ===
