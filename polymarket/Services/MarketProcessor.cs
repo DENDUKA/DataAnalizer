@@ -121,20 +121,78 @@ public class MarketProcessor
             return;
         }
 
-        // TODO: Implement in subtask-6-3
-        // 4. For each token:
-        //    - Check if already processed via _tracker.IsProcessed()
-        //    - Apply rate limiting via _rateLimiter.WaitAsync()
-        //    - Fetch price history via _clobClient.GetPriceHistoryAsync()
-        //    - Convert to MarketPriceRecord
-        //    - Mark as processed via _tracker.MarkProcessed()
+        // Step 4: Fetch price history for each token with rate limiting and deduplication
+        Console.WriteLine("\n--- Step 2: Price History Fetching ---");
+
+        var allPriceRecords = new List<MarketPriceRecord>();
+        var processedCount = 0;
+        var skippedCount = 0;
+        var errorCount = 0;
+        var totalTokens = marketsWithYesTokens.Count;
+
+        foreach (var (market, yesTokenId) in marketsWithYesTokens)
+        {
+            // Check if already processed (deduplication)
+            if (_tracker.IsProcessed(yesTokenId))
+            {
+                skippedCount++;
+                Console.Write($"\rProgress: {processedCount + skippedCount}/{totalTokens} (processed: {processedCount}, skipped: {skippedCount}, errors: {errorCount})");
+                continue;
+            }
+
+            // Apply rate limiting before making API request
+            await _rateLimiter.WaitAsync();
+
+            try
+            {
+                // Fetch price history from CLOB API
+                var priceHistory = await _clobClient.GetPriceHistoryAsync(yesTokenId);
+
+                if (priceHistory.Count > 0)
+                {
+                    // Convert PricePoints to MarketPriceRecords
+                    foreach (var pricePoint in priceHistory)
+                    {
+                        var price = pricePoint.GetPriceAsDecimal();
+                        if (price.HasValue)
+                        {
+                            var record = new MarketPriceRecord
+                            {
+                                Timestamp = pricePoint.GetTimestampAsUtc(),
+                                MarketName = market.Question,
+                                Price = price.Value
+                            };
+                            allPriceRecords.Add(record);
+                        }
+                    }
+                }
+
+                // Mark as processed (for persistence across runs)
+                _tracker.MarkProcessed(yesTokenId);
+                processedCount++;
+            }
+            catch (HttpRequestException ex)
+            {
+                errorCount++;
+                Console.WriteLine($"\nError fetching price history for '{market.Question}': {ex.Message}");
+            }
+
+            Console.Write($"\rProgress: {processedCount + skippedCount}/{totalTokens} (processed: {processedCount}, skipped: {skippedCount}, errors: {errorCount})");
+        }
+
+        Console.WriteLine($"\n\nPrice history fetching complete:");
+        Console.WriteLine($"  - Tokens processed: {processedCount}");
+        Console.WriteLine($"  - Tokens skipped (already cached): {skippedCount}");
+        Console.WriteLine($"  - Errors encountered: {errorCount}");
+        Console.WriteLine($"  - Total price records collected: {allPriceRecords.Count}");
 
         // TODO: Implement in subtask-6-4
         // 5. Export all records to CSV using CsvHelper
 
-        Console.WriteLine("\n--- Market Discovery Complete ---");
+        Console.WriteLine("\n--- Processing Complete ---");
         Console.WriteLine($"Total markets discovered: {allMarkets.Count}");
         Console.WriteLine($"Bitcoin price markets: {filteredMarkets.Count}");
-        Console.WriteLine($"Markets ready for processing: {marketsWithYesTokens.Count}");
+        Console.WriteLine($"Markets processed: {processedCount}");
+        Console.WriteLine($"Price records ready for export: {allPriceRecords.Count}");
     }
 }
