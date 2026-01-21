@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Globalization;
 using CsvHelper;
 using CsvHelper.Configuration;
@@ -64,9 +65,11 @@ public class MarketProcessor
     /// <returns>A task representing the asynchronous operation.</returns>
     public async Task RunAsync()
     {
-        Console.WriteLine("=" + new string('=', 49));
+        var totalStopwatch = Stopwatch.StartNew();
+
+        Console.WriteLine($"\n{new string('=', 50)}");
         Console.WriteLine("Polymarket Bitcoin Price History Exporter");
-        Console.WriteLine("=" + new string('=', 49));
+        Console.WriteLine($"{new string('=', 50)}");
 
         Console.WriteLine($"\nOutput directory: {_outputDirectory}");
         Console.WriteLine($"Export file pattern: {_exportFilePattern}");
@@ -74,11 +77,15 @@ public class MarketProcessor
         Console.WriteLine($"Previously processed tokens: {_tracker.Count}");
 
         // Step 1: Discover markets using Gamma API
+        var stepStopwatch = Stopwatch.StartNew();
         Console.WriteLine("\n--- Step 1: Market Discovery ---");
         Console.WriteLine($"Search pattern: {_gammaClient.SearchPattern}");
         Console.WriteLine($"Tag filter: {_gammaClient.Tag}");
+        Console.WriteLine("Fetching markets from Gamma API...");
 
         var allMarkets = await _gammaClient.GetAllMarketsAsync();
+        stepStopwatch.Stop();
+        Console.WriteLine($"Market discovery completed in {stepStopwatch.Elapsed.TotalSeconds:F2}s");
 
         if (allMarkets.Count == 0)
         {

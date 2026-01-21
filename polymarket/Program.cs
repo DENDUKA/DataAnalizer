@@ -1,6 +1,15 @@
+using System.Diagnostics;
 using System.Text.Json;
 using PolymarketHistoryExporter.Services;
 using PolymarketHistoryExporter.Utils;
+
+// Track execution time
+var stopwatch = Stopwatch.StartNew();
+
+Console.WriteLine($"\n{new string('=', 50)}");
+Console.WriteLine("Polymarket History Exporter - Startup");
+Console.WriteLine($"{new string('=', 50)}");
+Console.WriteLine($"Started at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
 
 // Load configuration from appsettings.json
 var configPath = Path.Combine(AppContext.BaseDirectory, "appsettings.json");
@@ -52,6 +61,25 @@ var apiSettings = settings.ApiSettings ?? new ApiSettings();
 var searchSettings = settings.SearchSettings ?? new SearchSettings();
 var exportSettings = settings.ExportSettings ?? new ExportSettings();
 
+Console.WriteLine("Configuration loaded successfully.");
+Console.WriteLine($"\n--- API Settings ---");
+Console.WriteLine($"Gamma API: {apiSettings.GammaApiBaseUrl ?? "https://gamma-api.polymarket.com"}");
+Console.WriteLine($"CLOB API: {apiSettings.ClobApiBaseUrl ?? "https://clob.polymarket.com"}");
+Console.WriteLine($"Rate limit delay: {apiSettings.RateLimitDelayMs}ms");
+Console.WriteLine($"HTTP timeout: {apiSettings.HttpTimeoutSeconds}s");
+
+Console.WriteLine($"\n--- Search Settings ---");
+Console.WriteLine($"Search pattern: {searchSettings.SearchPattern ?? "Bitcoin price on"}");
+Console.WriteLine($"Tag filter: {searchSettings.Tag ?? "Crypto"}");
+Console.WriteLine($"Only closed markets: {searchSettings.OnlyClosedMarkets}");
+Console.WriteLine($"Only archived markets: {searchSettings.OnlyArchivedMarkets}");
+Console.WriteLine($"Page size: {searchSettings.PageSize}");
+
+Console.WriteLine($"\n--- Export Settings ---");
+Console.WriteLine($"Output directory: {exportSettings.OutputDirectory ?? "./output"}");
+Console.WriteLine($"Cache file: {exportSettings.ProcessedMarketsFile ?? "./cache/processed_markets.txt"}");
+Console.WriteLine($"File pattern: {exportSettings.ExportFileNamePattern ?? "bitcoin_price_history_{timestamp}.csv"}");
+
 // Create Gamma API client for market discovery
 var gammaClient = new GammaApiClient(
     baseUrl: apiSettings.GammaApiBaseUrl ?? "https://gamma-api.polymarket.com",
@@ -93,12 +121,25 @@ var processor = new MarketProcessor(
 try
 {
     await processor.RunAsync();
+
+    stopwatch.Stop();
+    Console.WriteLine($"\n{new string('=', 50)}");
+    Console.WriteLine("Export completed successfully!");
+    Console.WriteLine($"Total elapsed time: {stopwatch.Elapsed:hh\\:mm\\:ss\\.fff}");
+    Console.WriteLine($"Finished at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+    Console.WriteLine($"{new string('=', 50)}");
+
     return 0;
 }
 catch (Exception ex)
 {
-    Console.WriteLine($"\nFatal error: {ex.Message}");
+    stopwatch.Stop();
+    Console.WriteLine($"\n{new string('=', 50)}");
+    Console.WriteLine($"Fatal error: {ex.Message}");
     Console.WriteLine($"Stack trace: {ex.StackTrace}");
+    Console.WriteLine($"Total elapsed time: {stopwatch.Elapsed:hh\\:mm\\:ss\\.fff}");
+    Console.WriteLine($"Failed at: {DateTime.Now:yyyy-MM-dd HH:mm:ss}");
+    Console.WriteLine($"{new string('=', 50)}");
     return 1;
 }
 
