@@ -1,0 +1,15 @@
+{
+  "discovered_files": {
+    "polymarket/Services/GammaApiClient.cs": {
+      "description": "GetMarketsAsync method implemented with pagination (offset/limit). Uses query string builder pattern with conditional parameters. Search pattern is converted to slug format (lowercase, spaces to dashes) for slug_starts_with API parameter.",
+      "category": "api-client-pattern",
+      "discovered_at": "2026-01-21T17:21:16.343004+00:00"
+    },
+    "polymarket/Services/ClobApiClient.cs": {
+      "description": "GetPriceHistoryAsync method implemented. Uses /prices-history?market={tokenId}&interval=max&fidelity=60 endpoint. Returns List<PricePoint> for historical prices. Handles HTTP 404 by returning empty list (invalid tokens). Ready for retry logic implementation in subtask-4-3.",
+      "category": "api_client",
+      "discovered_at": "2026-01-21T17:28:34.943144+00:00"
+    }
+  },
+  "last_updated": "2026-01-21T17:28:34.943144+00:00"
+}

@@ -1,0 +1,71 @@
+{
+  "complexity": "standard",
+  "workflow_type": "feature",
+  "confidence": 0.85,
+  "reasoning": "This is a greenfield feature requiring integration with two external APIs (Gamma and CLOB). While the codebase has similar patterns (HttpClient, pagination, rate limiting, CSV export), the Polymarket APIs require research to understand their schemas and correct usage. Scope is contained to 5-8 files within a single service.",
+
+  "analysis": {
+    "scope": {
+      "estimated_files": 7,
+      "estimated_services": 1,
+      "is_cross_cutting": false,
+      "notes": "New service or console app with: main program, Gamma API client, CLOB API client, response models, market tracker/persistence, output formatter. Similar structure to existing BinanceDataLoader."
+    },
+    "integrations": {
+      "external_services": ["Polymarket Gamma API", "Polymarket CLOB API"],
+      "new_dependencies": [],
+      "research_needed": true,
+      "notes": "Both Polymarket APIs are external services requiring research for endpoint URLs, request parameters, response schemas, and pagination patterns. Need to understand clobTokenIds mapping and market filtering."
+    },
+    "infrastructure": {
+      "docker_changes": false,
+      "database_changes": false,
+      "config_changes": true,
+      "notes": "No Docker or database required. May need API URLs in configuration. File-based persistence for tracking processed markets (similar to CSV output pattern). Possibly add API rate limit configuration."
+    },
+    "knowledge": {
+      "patterns_exist": true,
+      "research_required": true,
+      "unfamiliar_tech": ["Polymarket Gamma API", "Polymarket CLOB API"],
+      "notes": "Codebase already demonstrates: HttpClient usage, pagination with while loops, rate limiting with Task.Delay, error handling with retry, CSV export with CsvHelper, JSON deserialization. Need research for Polymarket-specific concepts (clobTokenIds, market outcomes, probability conversion)."
+    },
+    "risk": {
+      "level": "medium",
+      "concerns": [
+        "Rate limiting (429 errors) if delays insufficient",
+        "Incomplete data if pagination not fully traversed",
+        "Deduplication mechanism must reliably track processed markets",
+        "API schema changes breaking deserialization"
+      ],
+      "notes": "Primary risks are data completeness and API rate limiting. Mitigation strategies exist in codebase (retry logic, delay patterns). No security-critical operations involved."
+    }
+  },
+
+  "recommended_phases": [
+    "discovery",
+    "requirements",
+    "research",
+    "context",
+    "spec_writing",
+    "planning",
+    "validation"
+  ],
+
+  "flags": {
+    "needs_research": true,
+    "needs_self_critique": false,
+    "needs_infrastructure_setup": false
+  },
+
+  "validation_recommendations": {
+    "risk_level": "medium",
+    "skip_validation": false,
+    "minimal_mode": false,
+    "test_types_required": ["unit", "integration"],
+    "security_scan_required": false,
+    "staging_deployment_required": false,
+    "reasoning": "External API integration with data processing logic requires unit tests for business logic (price conversion, deduplication) and integration tests for API calls (mocking or live testing). No security-sensitive operations or infrastructure changes involved."
+  },
+
+  "created_at": "2026-01-21T12:00:00Z"
+}

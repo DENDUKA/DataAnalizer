@@ -1,0 +1,395 @@
+{
+  "integrations_researched": [
+    {
+      "name": "Polymarket Gamma API",
+      "type": "service",
+      "verified_package": {
+        "name": "N/A - REST API",
+        "install_command": "No package required - HTTP client",
+        "version": "N/A",
+        "verified": false,
+        "base_url": "https://gamma-api.polymarket.com"
+      },
+      "api_patterns": {
+        "imports": [],
+        "initialization": "Use HttpClient to make GET requests",
+        "key_endpoints": [
+          "/events - Search for events with filtering",
+          "/markets - Get market details including clobTokenIds"
+        ],
+        "key_parameters": {
+          "search": "Filter by name pattern (e.g., 'Bitcoin price on')",
+          "tag": "Filter by tag (e.g., 'Crypto')",
+          "closed": "Filter for closed markets (closed=true)",
+          "archived": "Include archived markets",
+          "offset": "Pagination offset for retrieving all results",
+          "limit": "Number of results per page"
+        },
+        "verified_against": "Requirements document - NOT verified against official API docs"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": ["System.Net.Http.HttpClient", "System.Text.Json"]
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "external_service": true,
+        "base_url": "https://gamma-api.polymarket.com"
+      },
+      "gotchas": [
+        "Pagination required - API returns results in chunks, must loop through all offsets",
+        "Rate limiting may apply - implement delays between requests",
+        "Response schema needs to be mapped to C# DTOs",
+        "clobTokenIds array contains IDs for both 'Yes' and 'No' outcomes - need to identify which is which"
+      ],
+      "research_sources": [
+        "Requirements document",
+        "UNVERIFIED - Official API documentation not accessible during research phase"
+      ],
+      "verification_status": "NEEDS_MANUAL_TESTING",
+      "recommendations": [
+        "Test actual API endpoints before implementation",
+        "Document actual response schema after first successful call",
+        "Implement error handling for 404, 429, 500 status codes"
+      ]
+    },
+    {
+      "name": "Polymarket CLOB API",
+      "type": "service",
+      "verified_package": {
+        "name": "N/A - REST API",
+        "install_command": "No package required - HTTP client",
+        "version": "N/A",
+        "verified": false,
+        "base_url": "https://clob.polymarket.com"
+      },
+      "api_patterns": {
+        "imports": [],
+        "initialization": "Use HttpClient to make GET requests",
+        "key_endpoints": [
+          "/prices-history - Get historical price data for a token"
+        ],
+        "key_parameters": {
+          "market": "clobTokenId of the 'Yes' outcome token",
+          "interval": "Time interval (e.g., '1h' for hourly, 'max' for all data)",
+          "fidelity": "Granularity in seconds (60 = minute-level data)"
+        },
+        "verified_against": "Requirements document - NOT verified against official API docs"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": ["System.Net.Http.HttpClient", "System.Text.Json"]
+      },
+      "infrastructure": {
+        "requires_docker": false,
+        "external_service": true,
+        "base_url": "https://clob.polymarket.com"
+      },
+      "gotchas": [
+        "Must implement rate limiting to avoid HTTP 429 (Too Many Requests)",
+        "Recommended delay: 100-500ms between requests (Task.Delay)",
+        "Price format: $0.65 = 65% probability (divide by 100 if needed)",
+        "Large datasets possible - consider streaming or chunked processing",
+        "Only fetch 'Yes' outcome tokens, not 'No' tokens"
+      ],
+      "research_sources": [
+        "Requirements document",
+        "UNVERIFIED - Official API documentation not accessible during research phase"
+      ],
+      "verification_status": "NEEDS_MANUAL_TESTING",
+      "recommendations": [
+        "Start with conservative rate limiting (500ms delay)",
+        "Monitor response headers for rate limit information",
+        "Implement exponential backoff for 429 errors",
+        "Test with a single market before processing all markets"
+      ]
+    },
+    {
+      "name": "System.Net.Http.HttpClient",
+      "type": "library",
+      "verified_package": {
+        "name": "System.Net.Http",
+        "install_command": "Built-in to .NET Core/.NET 5+",
+        "version": "Built-in",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "using System.Net.Http;",
+          "using System.Net.Http.Json;"
+        ],
+        "initialization": "// Use IHttpClientFactory for production\nservices.AddHttpClient();\n\n// Or create singleton for simple cases\nprivate static readonly HttpClient client = new HttpClient();",
+        "key_functions": [
+          "GetAsync(string uri)",
+          "GetFromJsonAsync<T>(string uri)",
+          "GetStringAsync(string uri)"
+        ],
+        "verified_against": "Standard .NET library"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "DO NOT create new HttpClient per request - causes socket exhaustion",
+        "Use IHttpClientFactory in production applications",
+        "Set BaseAddress once and reuse client instance",
+        "Add default headers (User-Agent, Accept) if needed",
+        "Configure timeout for long-running requests",
+        "Dispose responses to free up connections"
+      ],
+      "research_sources": [
+        "Microsoft .NET Documentation",
+        "Standard C# best practices"
+      ],
+      "verification_status": "VERIFIED",
+      "recommendations": [
+        "Use IHttpClientFactory for dependency injection",
+        "Configure named or typed clients for each API",
+        "Set reasonable timeout values (30-60 seconds)",
+        "Add retry policies using Polly library (optional)"
+      ]
+    },
+    {
+      "name": "System.Text.Json",
+      "type": "library",
+      "verified_package": {
+        "name": "System.Text.Json",
+        "install_command": "Built-in to .NET Core 3.0+",
+        "version": "Built-in",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "using System.Text.Json;",
+          "using System.Text.Json.Serialization;"
+        ],
+        "initialization": "var options = new JsonSerializerOptions\n{\n    PropertyNameCaseInsensitive = true,\n    PropertyNamingPolicy = JsonNamingPolicy.CamelCase\n};",
+        "key_functions": [
+          "JsonSerializer.Deserialize<T>(string json)",
+          "JsonSerializer.Deserialize<T>(Stream utf8Json)",
+          "JsonSerializer.Serialize<T>(T value)"
+        ],
+        "verified_against": "Standard .NET library"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "Case-sensitive by default - use PropertyNameCaseInsensitive = true",
+        "Use snake_case attributes if API uses snake_case: [JsonPropertyName(\"clob_token_ids\")]",
+        "Null handling differs from Newtonsoft.Json",
+        "DateTime deserialization format must match API output",
+        "Use JsonDocument for dynamic/unknown JSON schemas"
+      ],
+      "research_sources": [
+        "Microsoft .NET Documentation",
+        "Standard C# best practices"
+      ],
+      "verification_status": "VERIFIED",
+      "recommendations": [
+        "Create DTO classes matching API response schemas",
+        "Use PropertyNameCaseInsensitive for robustness",
+        "Add [JsonPropertyName] attributes for non-standard names",
+        "Consider Newtonsoft.Json if System.Text.Json lacks features"
+      ]
+    },
+    {
+      "name": "CsvHelper",
+      "type": "library",
+      "verified_package": {
+        "name": "CsvHelper",
+        "install_command": "dotnet add package CsvHelper",
+        "version": "Latest (30.x as of 2024)",
+        "verified": true,
+        "nuget_package": "CsvHelper"
+      },
+      "api_patterns": {
+        "imports": [
+          "using CsvHelper;",
+          "using CsvHelper.Configuration;"
+        ],
+        "initialization": "using (var writer = new StreamWriter(\"output.csv\"))\nusing (var csv = new CsvWriter(writer, CultureInfo.InvariantCulture))\n{\n    csv.WriteRecords(records);\n}",
+        "key_functions": [
+          "CsvWriter.WriteRecords<T>(IEnumerable<T> records)",
+          "CsvWriter.WriteHeader<T>()",
+          "CsvWriter.NextRecord()",
+          "CsvWriter.WriteField(object field)"
+        ],
+        "verified_against": "Context7 MCP - /joshclose/csvhelper"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "Must specify CultureInfo for consistent formatting",
+        "Auto-flush may not occur - ensure Dispose() is called",
+        "Use using statements to properly dispose writer and stream",
+        "Column order follows property order in class by default",
+        "DateTime formatting can be customized via attributes"
+      ],
+      "research_sources": [
+        "Context7 MCP - /joshclose/csvhelper",
+        "NuGet package repository"
+      ],
+      "verification_status": "VERIFIED",
+      "recommendations": [
+        "Create a POCO class for CSV records (Timestamp, MarketName, Price)",
+        "Use [Name(\"Column Name\")] attributes to control CSV headers",
+        "Use CultureInfo.InvariantCulture for consistent output",
+        "Consider streaming writes for large datasets"
+      ]
+    },
+    {
+      "name": "Task.Delay (Rate Limiting)",
+      "type": "library",
+      "verified_package": {
+        "name": "System.Threading.Tasks",
+        "install_command": "Built-in to .NET",
+        "version": "Built-in",
+        "verified": true
+      },
+      "api_patterns": {
+        "imports": [
+          "using System.Threading.Tasks;"
+        ],
+        "initialization": "N/A",
+        "key_functions": [
+          "await Task.Delay(TimeSpan.FromMilliseconds(500));",
+          "await Task.Delay(500); // 500ms delay"
+        ],
+        "verified_against": "Standard .NET library"
+      },
+      "configuration": {
+        "env_vars": [],
+        "config_files": [],
+        "dependencies": []
+      },
+      "infrastructure": {
+        "requires_docker": false
+      },
+      "gotchas": [
+        "Only works in async methods",
+        "Delays are approximate, not precise",
+        "Use CancellationToken for cancellable delays",
+        "Don't use Thread.Sleep in async code - use Task.Delay"
+      ],
+      "research_sources": [
+        "Microsoft .NET Documentation"
+      ],
+      "verification_status": "VERIFIED",
+      "recommendations": [
+        "Start with 500ms delay between API requests",
+        "Make delay configurable via appsettings.json",
+        "Monitor API responses for rate limit headers",
+        "Adjust delay based on actual API behavior"
+      ]
+    }
+  ],
+  "unverified_claims": [
+    {
+      "claim": "Gamma API endpoint structure and parameters (search, tag, closed, offset)",
+      "reason": "Unable to access official Polymarket API documentation during research phase",
+      "risk_level": "high",
+      "mitigation": "Test API endpoints manually before implementation, document actual response schemas"
+    },
+    {
+      "claim": "CLOB API /prices-history endpoint accepts market, interval, fidelity parameters",
+      "reason": "Unable to access official Polymarket API documentation during research phase",
+      "risk_level": "high",
+      "mitigation": "Test with sample clobTokenId to verify parameter names and response format"
+    },
+    {
+      "claim": "clobTokenIds array contains both 'Yes' and 'No' outcome identifiers",
+      "reason": "Exact array structure and ordering not documented",
+      "risk_level": "medium",
+      "mitigation": "Examine actual API response to determine how to identify 'Yes' vs 'No' tokens"
+    },
+    {
+      "claim": "Polymarket price format is direct probability ($0.65 = 65%)",
+      "reason": "Assumed from requirements, not verified",
+      "risk_level": "low",
+      "mitigation": "Verify with actual price data, adjust conversion if needed"
+    }
+  ],
+  "recommendations": [
+    "**API Verification Phase**: Before starting implementation, manually test both Gamma and CLOB APIs using Postman or curl to document actual endpoints, parameters, and response schemas",
+    "**Create DTO Classes**: Based on actual API responses, create strongly-typed C# DTO classes for deserialization",
+    "**Use IHttpClientFactory**: Configure typed or named HttpClient instances for Gamma and CLOB APIs separately",
+    "**Implement Persistence**: Use SQLite or JSON file to track processed market IDs (avoid re-fetching)",
+    "**Rate Limiting Strategy**: Start with 500ms delay, monitor for 429 errors, implement exponential backoff",
+    "**Error Handling**: Wrap API calls in try-catch, log failed requests, implement retry logic for transient failures",
+    "**Configuration**: Store API base URLs, rate limit delays, and output paths in appsettings.json",
+    "**Logging**: Use Microsoft.Extensions.Logging for tracking progress and debugging",
+    "**Data Validation**: Validate that fetched tokens are actually 'Yes' outcomes before processing",
+    "**Testing**: Create integration tests with sample market IDs before processing thousands of markets"
+  ],
+  "critical_unknowns": [
+    "How to differentiate 'Yes' vs 'No' clobTokenIds in the API response",
+    "Actual rate limits for Gamma and CLOB APIs",
+    "Maximum number of results per Gamma API page (for offset calculation)",
+    "Response format for closed/archived markets filter",
+    "Whether 'Bitcoin price on [Date]' markets have a specific tag or require text search"
+  ],
+  "suggested_implementation_order": [
+    "1. Manual API exploration (Postman/curl) to document actual endpoints and responses",
+    "2. Create DTO classes based on actual API schemas",
+    "3. Implement Gamma API client with pagination",
+    "4. Test with small offset range to verify market discovery",
+    "5. Implement CLOB API client with rate limiting",
+    "6. Test price history fetch for 1-2 markets",
+    "7. Implement persistence layer for tracking processed markets",
+    "8. Implement CSV export with CsvHelper",
+    "9. Integrate all components and process full dataset",
+    "10. Add error handling, logging, and retry logic"
+  ],
+  "nuget_packages_required": [
+    {
+      "name": "CsvHelper",
+      "version": "Latest (30.x+)",
+      "install": "dotnet add package CsvHelper",
+      "verified": true
+    },
+    {
+      "name": "Microsoft.Extensions.Http",
+      "version": "Latest",
+      "install": "dotnet add package Microsoft.Extensions.Http",
+      "verified": true,
+      "purpose": "IHttpClientFactory support"
+    },
+    {
+      "name": "Microsoft.Extensions.Configuration.Json",
+      "version": "Latest",
+      "install": "dotnet add package Microsoft.Extensions.Configuration.Json",
+      "verified": true,
+      "purpose": "appsettings.json configuration"
+    },
+    {
+      "name": "Microsoft.Extensions.Logging.Console",
+      "version": "Latest",
+      "install": "dotnet add package Microsoft.Extensions.Logging.Console",
+      "verified": true,
+      "purpose": "Console logging for progress tracking"
+    }
+  ],
+  "context7_libraries_used": [
+    "/joshclose/csvhelper"
+  ],
+  "created_at": "2026-01-21T12:00:00Z"
+}

@@ -1,0 +1,31 @@
+{
+  "project_root": "C:\\Program\\Data\\BinanceDataLoader",
+  "project_type": "single",
+  "services": {
+    "polymarket-exporter": {
+      "path": "./polymarket",
+      "tech_stack": ["csharp", "dotnet8", "console-app"],
+      "port": null,
+      "dev_command": "dotnet run --project PolymarketHistoryExporter.csproj",
+      "build_command": "dotnet build",
+      "test_command": "dotnet test"
+    }
+  },
+  "infrastructure": {
+    "docker": false,
+    "database": false,
+    "cache": "file-based"
+  },
+  "conventions": {
+    "http_client": "singleton pattern (static readonly or instance variable)",
+    "json_parsing": "System.Text.Json with PropertyNameCaseInsensitive=true",
+    "csv_export": "CsvHelper with CultureInfo.InvariantCulture",
+    "pagination": "while loop with offset increment until count < limit",
+    "rate_limiting": "Task.Delay between requests",
+    "error_handling": "try-catch with retry and exponential backoff",
+    "naming": "PascalCase classes, camelCase fields"
+  },
+  "dependencies": {
+    "nuget_packages": ["CsvHelper"]
+  }
+}
