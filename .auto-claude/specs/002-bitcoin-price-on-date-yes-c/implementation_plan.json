@@ -1,7 +1,7 @@
 {
   "feature": "Polymarket Bitcoin Price History Exporter (C#)",
   "workflow_type": "feature",
-  "workflow_rationale": "This is a greenfield console application being built from scratch. It implements a complete data extraction pipeline with API integration, pagination, rate limiting, and CSV export. The workflow follows a natural build order: setup \u2192 models \u2192 API clients \u2192 core services \u2192 integration.",
+  "workflow_rationale": "This is a greenfield console application being built from scratch. It implements a complete data extraction pipeline with API integration, pagination, rate limiting, and CSV export. The workflow follows a natural build order: setup → models → API clients → core services → integration.",
   "phases": [
     {
       "id": "phase-1-setup",
@@ -533,7 +533,7 @@
             ]
           },
           "status": "completed",
-          "notes": "Code review COMPLETED - All 11 implementation files verified:\n\u2022 PolymarketHistoryExporter.csproj (.NET 8, CsvHelper 31.0.0)\n\u2022 Program.cs (entry point with config loading)\n\u2022 appsettings.json (API/Search/Export settings)\n\u2022 Services/GammaApiClient.cs (market discovery with pagination)\n\u2022 Services/ClobApiClient.cs (price history with retry/exponential backoff)\n\u2022 Services/ProcessedMarketTracker.cs (file-based deduplication)\n\u2022 Services/MarketProcessor.cs (full orchestration pipeline)\n\u2022 Models/GammaApiModels.cs, ClobApiModels.cs, ExportModels.cs\n\u2022 Utils/RateLimiter.cs\n\nCSV Schema verified: Timestamp, MarketName, Price, Probability\n\nENVIRONMENT BLOCKER: dotnet CLI not available in Claude Code environment.\nManual e2e testing required by user: cd polymarket && dotnet build && dotnet run\n\nCommitted: ba0aba5",
+          "notes": "Code review COMPLETED - All 11 implementation files verified:\n• PolymarketHistoryExporter.csproj (.NET 8, CsvHelper 31.0.0)\n• Program.cs (entry point with config loading)\n• appsettings.json (API/Search/Export settings)\n• Services/GammaApiClient.cs (market discovery with pagination)\n• Services/ClobApiClient.cs (price history with retry/exponential backoff)\n• Services/ProcessedMarketTracker.cs (file-based deduplication)\n• Services/MarketProcessor.cs (full orchestration pipeline)\n• Models/GammaApiModels.cs, ClobApiModels.cs, ExportModels.cs\n• Utils/RateLimiter.cs\n\nCSV Schema verified: Timestamp, MarketName, Price, Probability\n\nENVIRONMENT BLOCKER: dotnet CLI not available in Claude Code environment.\nManual e2e testing required by user: cd polymarket && dotnet build && dotnet run\n\nCommitted: ba0aba5",
           "updated_at": "2026-01-21T22:06:14.421561+00:00"
         },
         {
@@ -549,7 +549,7 @@
             "instructions": "Test Gamma API: curl 'https://gamma-api.polymarket.com/markets?tag=Crypto&closed=true&limit=5' | Verify JSON response with markets. Test CLOB API: curl 'https://clob.polymarket.com/prices-history?market=<tokenId>&interval=max&fidelity=60' | Verify price history array returned."
           },
           "status": "completed",
-          "notes": "Manual API verification COMPLETED with curl:\\n\\n\u2705 Gamma API: curl 'https://gamma-api.polymarket.com/markets?tag=Crypto&closed=true&limit=5' - Returns JSON array of markets with id, question, clobTokenIds, outcomes, closed, closedTime, volume fields.\\n\\n\u2705 CLOB API: curl 'https://clob.polymarket.com/prices-history?market=<tokenId>&interval=max&fidelity=60' - Returns JSON with history array containing price points with 't' (Unix timestamp) and 'p' (price decimal) fields.\\n\\nNotes:\\n1. Gamma API tag filter doesn't strictly filter - client-side filtering by question pattern required\\n2. Old markets (2020) return empty history - price data retained for recent markets only\\n3. Token IDs are large integers (not hex addresses)\\n4. No rate limit errors encountered during testing",
+          "notes": "Manual API verification COMPLETED with curl:\\n\\n✅ Gamma API: curl 'https://gamma-api.polymarket.com/markets?tag=Crypto&closed=true&limit=5' - Returns JSON array of markets with id, question, clobTokenIds, outcomes, closed, closedTime, volume fields.\\n\\n✅ CLOB API: curl 'https://clob.polymarket.com/prices-history?market=<tokenId>&interval=max&fidelity=60' - Returns JSON with history array containing price points with 't' (Unix timestamp) and 'p' (price decimal) fields.\\n\\nNotes:\\n1. Gamma API tag filter doesn't strictly filter - client-side filtering by question pattern required\\n2. Old markets (2020) return empty history - price data retained for recent markets only\\n3. Token IDs are large integers (not hex addresses)\\n4. No rate limit errors encountered during testing",
           "updated_at": "2026-01-21T22:09:14.453760+00:00"
         }
       ]
@@ -593,7 +593,7 @@
       "CSV file contains valid data with correct schema",
       "Processed markets tracked correctly (no duplicate fetches on re-run)",
       "Rate limiting prevents HTTP 429 errors",
-      "Prices correctly converted to probabilities (0.65 \u2192 65.0)",
+      "Prices correctly converted to probabilities (0.65 → 65.0)",
       "Console logging shows clear progress and completion status"
     ],
     "verification_steps": [
@@ -697,9 +697,9 @@
     }
   },
   "qa_signoff": null,
-  "status": "in_progress",
-  "planStatus": "in_progress",
-  "updated_at": "2026-01-21T17:12:26.089Z",
+  "status": "done",
+  "planStatus": "completed",
+  "updated_at": "2026-01-22T04:50:49.461Z",
   "recoveryNote": "Task recovered from stuck state at 2026-01-21T17:12:26.089Z",
   "last_updated": "2026-01-21T22:09:14.453760+00:00"
 }

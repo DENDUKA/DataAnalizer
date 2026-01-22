@@ -1,25 +1,25 @@
 {
   "active": true,
-  "spec": "002-bitcoin-price-on-date-yes-c",
+  "spec": "004-btc-binance",
   "state": "building",
   "subtasks": {
-    "completed": 17,
-    "total": 22,
+    "completed": 1,
+    "total": 5,
     "in_progress": 1,
     "failed": 0
   },
   "phase": {
-    "current": "Market Processor & Orchestration",
+    "current": "Data Models",
     "id": null,
-    "total": 4
+    "total": 1
   },
   "workers": {
     "active": 0,
     "max": 1
   },
   "session": {
-    "number": 14,
-    "started_at": "2026-01-21T21:12:29.956660"
+    "number": 2,
+    "started_at": "2026-01-22T02:17:42.618931"
   },
-  "last_update": "2026-01-21T21:46:49.751899"
+  "last_update": "2026-01-22T02:18:49.298044"
 }
