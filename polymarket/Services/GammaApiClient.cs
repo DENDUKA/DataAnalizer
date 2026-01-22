@@ -126,6 +126,46 @@ public class GammaApiClient
     }
 
     /// <summary>
+    /// Retrieves an event by its slug from the Gamma API.
+    /// </summary>
+    /// <param name="slug">The event slug (e.g., "bitcoin-price-on-january-21").</param>
+    /// <returns>The GammaEvent if found, or null if not found.</returns>
+    public async Task<GammaEvent?> GetEventBySlugAsync(string slug)
+    {
+        if (string.IsNullOrWhiteSpace(slug))
+        {
+            throw new ArgumentException("Slug cannot be null or empty.", nameof(slug));
+        }
+
+        // Normalize slug: lowercase and replace spaces with dashes
+        var normalizedSlug = slug.ToLowerInvariant().Replace(" ", "-").Trim();
+        var url = $"/events?slug={Uri.EscapeDataString(normalizedSlug)}";
+
+        try
+        {
+            var response = await _httpClient.GetStringAsync(url);
+            var events = JsonSerializer.Deserialize<List<GammaEvent>>(response, _jsonOptions);
+
+            // The API returns an array; we expect exactly one match for a specific slug
+            return events?.FirstOrDefault();
+        }
+        catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+        {
+            return null;
+        }
+        catch (HttpRequestException ex)
+        {
+            Console.WriteLine($"Error fetching event by slug '{slug}': {ex.Message}");
+            throw;
+        }
+        catch (JsonException ex)
+        {
+            Console.WriteLine($"Error parsing event response for slug '{slug}': {ex.Message}");
+            throw;
+        }
+    }
+
+    /// <summary>
     /// Retrieves all markets from the Gamma API by iterating through all pages.
     /// Uses configured page size and filters.
     /// </summary>

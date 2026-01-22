@@ -93,4 +93,64 @@ public class ClobApiClient
             }
         }
     }
+
+    /// <summary>
+    /// Retrieves orderbook data (bids/asks) for a single market token from the CLOB API.
+    /// </summary>
+    /// <param name="tokenId">The clobTokenId of the market token.</param>
+    /// <returns>
+    /// An OrderbookResponse object containing bid and ask orders.
+    /// Returns null if the token is not found (HTTP 404) or if no orderbook data is available.
+    /// </returns>
+    public async Task<OrderbookResponse?> GetOrderbookAsync(string tokenId)
+    {
+        if (string.IsNullOrEmpty(tokenId))
+        {
+            return null;
+        }
+
+        var url = $"/book?token_id={Uri.EscapeDataString(tokenId)}";
+        var retryCount = 0;
+        var delayMs = InitialDelayMs;
+
+        while (true)
+        {
+            try
+            {
+                var response = await _httpClient.GetStringAsync(url);
+                var result = JsonSerializer.Deserialize<OrderbookResponse>(response, _jsonOptions);
+
+                return result;
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                // Token not found - return null (not an error, just no data)
+                Console.WriteLine($"Orderbook not found for token: {tokenId}");
+                return null;
+            }
+            catch (HttpRequestException ex) when (ex.StatusCode == System.Net.HttpStatusCode.TooManyRequests)
+            {
+                retryCount++;
+                if (retryCount > MaxRetries)
+                {
+                    Console.WriteLine($"Max retries exceeded for orderbook token {tokenId} after {MaxRetries} attempts");
+                    throw;
+                }
+
+                Console.WriteLine($"Rate limited (HTTP 429). Retry {retryCount}/{MaxRetries} after {delayMs}ms...");
+                await Task.Delay(delayMs);
+                delayMs *= 2; // Exponential backoff
+            }
+            catch (HttpRequestException ex)
+            {
+                Console.WriteLine($"Error fetching orderbook for token {tokenId}: {ex.Message}");
+                throw;
+            }
+            catch (JsonException ex)
+            {
+                Console.WriteLine($"Error parsing orderbook response for token {tokenId}: {ex.Message}");
+                throw;
+            }
+        }
+    }
 }
